@@ -65,8 +65,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     TextView info;
     Button goBtn;
     private TextView mapTemp;
-    private AutoCompleteTextView writeCityEditText;
-    private ArrayAdapter adapterAutoComplete;
 
 
     @Override
@@ -98,26 +96,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         info = (TextView) findViewById(R.id.info_tv);
         goBtn = (Button) findViewById(R.id.go_btn);
         mapTemp = (TextView) findViewById(R.id.map_temp);
-
-//        writeCityEditText = (AutoCompleteTextView) findViewById(R.id.writeCityEditText);
-
-        writeCityEditText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                int chars = writeCityEditText.getText().toString().length();
-                if(chars >= 3){
-                    LoadCitiesTask filler = new LoadCitiesTask();
-//                    filler.execute(writeCityEditText.getText().toString());
-                }
-            }
-        });
 
 
         goBtn.setOnClickListener(new View.OnClickListener() {
