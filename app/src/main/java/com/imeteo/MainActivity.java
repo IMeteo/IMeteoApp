@@ -35,6 +35,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.imeteo.model.CItyDao;
+import com.imeteo.model.DAO;
 
 import java.io.IOException;
 import java.util.List;
@@ -229,6 +231,26 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             super.onPostExecute(s);
             info.setText(s);
             mapTemp.setText(s);
+            if (txtCityName.getText()!=null && s!=null && txtCityName.length()>0) {
+                new SaveChosenCityFromMap().execute(txtCityName.getText().toString(), s);
+            }
+        }
+    }
+
+
+    class SaveChosenCityFromMap extends AsyncTask<String,Void,Void>{
+
+        @Override
+        protected Void doInBackground(String... params) {
+
+            String cityName = params[0];
+            String cityTemp = params[1];
+
+            DAO saveCity = new CItyDao(getApplicationContext());
+            ((CItyDao)saveCity).open();
+            saveCity.saveCityInfo(cityName,Double.valueOf(cityTemp));
+
+            return null;
         }
     }
 }
