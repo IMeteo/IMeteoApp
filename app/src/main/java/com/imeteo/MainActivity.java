@@ -13,6 +13,10 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.TextView;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
@@ -23,12 +27,15 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.Scanner;
 
 import com.google.android.gms.maps.GoogleMap;
@@ -42,7 +49,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity implements LocationListener,OnMapReadyCallback {
+public class MainActivity extends AppCompatActivity implements LocationListener, OnMapReadyCallback {
 
     public static final int SAVE_TO_FILE = 0;
     public static final int SAVE_TO_DB = 1;
@@ -51,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private GoogleMap map;
     private LocationManager locationManager;
 
+    private HashMap<String, String> cities;
 
     private static final String API_KEY = "6c55f38f9cba0a753a2ecf7f5fb56788";
     private static final String CELSIUS = "metric";
@@ -91,12 +99,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         goBtn = (Button) findViewById(R.id.go_btn);
         mapTemp = (TextView) findViewById(R.id.map_temp);
 
+
         goBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                GetApiDataTask task =  new GetApiDataTask();
+                GetApiDataTask task = new GetApiDataTask();
                 //TODO pass parameters
-                task.execute("hello");
+                task.execute(city.getText().toString().trim());
             }
         });
 
@@ -166,17 +175,17 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                if (addresses!= null && addresses.size() > 0) {
+                if (addresses != null && addresses.size() > 0) {
                     txtCityName.setText(addresses.get(0).getLocality());
-                    new GetApiDataTask().execute(String.valueOf(latLng.latitude),String.valueOf(latLng.longitude));
+                    new GetApiDataTask().execute(String.valueOf(latLng.latitude), String.valueOf(latLng.longitude));
                 }
             }
         });
     }
 
     private void saveConfig() {
-        SharedPreferences config    = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
-        SharedPreferences.Editor    editor      = config.edit();
+        SharedPreferences config = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+        SharedPreferences.Editor editor = config.edit();
         editor.putInt("save_to_file", SAVE_TO_FILE);
         editor.putInt("save_to_db", SAVE_TO_DB);
         editor.commit();
@@ -186,29 +195,38 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private class GetApiDataTask extends AsyncTask<String, Void, String> {
 
 
-
         @Override
         protected String doInBackground(String... params) {
 
             String temp = "";
             String info = "";
-            String lat = params[0];
-            String lon = params[1];
+
+            String numberReg = "\\d+.\\d+";
+            String lat;
+            String lon;
 
             try {
-//                api.openweathermap.org/data/2.5/weather?q={city name},{country code}
-//                URL urlByCity = new URL("http://api.openweathermap.org/data/2.5/weather?q=" + "London" + "," + "uk" + "&APPID=" + API_KEY + "&units=" + CELSIUS);
 
+                URL url;
+                if (!params[0].matches(numberReg)) {
+
+//                api.openweathermap.org/data/2.5/weather?q={city name},{country code}
+                    url = new URL("http://api.openweathermap.org/data/2.5/weather?q=" + params[0] + "&APPID=" + API_KEY + "&units=" + CELSIUS);
+
+                } else {
+                    lat = params[0];
+                    lon = params[1];
 //                api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}
-                URL urlByCoordinates = new URL("http://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&APPID=" + API_KEY + "&units=" + CELSIUS);
+                    url = new URL("http://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&APPID=" + API_KEY + "&units=" + CELSIUS);
+                }
 
 //                TODO
-                HttpURLConnection connection = (HttpURLConnection) urlByCoordinates.openConnection();
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.connect();
 
                 Scanner sc = new Scanner(connection.getInputStream());
                 StringBuilder body = new StringBuilder();
-                while(sc.hasNextLine()){
+                while (sc.hasNextLine()) {
                     body.append(sc.nextLine());
                 }
                 info = body.toString();
@@ -253,4 +271,54 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             return null;
         }
     }
+
+    private class LoadCitiesTask extends AsyncTask<Void, Void, HashMap<String, String>>{
+
+        private HashMap<String, String> cities;
+
+        @Override
+        protected HashMap<String, String> doInBackground(Void... params) {
+
+            String info;
+            try{
+                URL urlByCoordinates = new URL("http://api.openweathermap.org/data/2.5/weather?lat=" + "42.69" + "&lon=" + "23.32" + "&APPID=" + API_KEY + "&units=" + CELSIUS);
+
+                HttpURLConnection connection = (HttpURLConnection) urlByCoordinates.openConnection();
+                connection.connect();
+
+                Scanner sc = new Scanner(connection.getInputStream());
+                StringBuilder body = new StringBuilder();
+                while(sc.hasNextLine()){
+                    body.append(sc.nextLine());
+                }
+                info = body.toString();
+
+                JSONArray array = new JSONArray(info);
+
+                for (int i = 0; i < info.length(); i++) {
+                    JSONObject object = array.getJSONObject(i);
+                    String city = object.getString("name");
+                    String country = object.getString("country");
+
+                    cities.put(country, city);
+                }
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(HashMap<String, String> stringStringHashMap) {
+            super.onPostExecute(stringStringHashMap);
+            MainActivity.this.cities = stringStringHashMap;
+        }
+    }
+
 }
